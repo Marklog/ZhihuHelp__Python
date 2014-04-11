@@ -33,14 +33,13 @@ def PrintDict(Dict={}):
 
 
 
-def UpdatePostHeader(cursor=None ,UserID='',Password=''):#建一个用于储存PostHeader的变量
+def UpdatePostHeader(cursor=None ,UserID='',Password=''):#建一个用于储存PostHeader的变量#如果没输账号密码的话即使选择了模式2也会按读取公共收藏夹模式进行
     if  UserID=='':
         PrivateModeFlag=False
         UserID='mengqingxue2014@qq.com'
         Password='131724qingxue'
     else:
         PrivateModeFlag=True
-
 
     rowcount    =cursor.execute('select count(Pickle)  from VarPickle where Var="PostHeader"').fetchone()[0]
     #print   rowcount
@@ -131,12 +130,14 @@ def UpdatePostHeader(cursor=None ,UserID='',Password=''):#建一个用于储存P
             PrintDict(PostInfo['msg'])
             if  PrivateModeFlag:
                 print   u'请在网页上登陆一次知乎帐号，确认用户名密码正确后再登陆'
-                print   u'点击回车继续'
+                print   u'点击回车退出'
+                raw_input()
+                os._exit(0)
             else:
                 print   u'''登陆失败，请在知乎网页上登陆下方帐号后再运行本程序：\n帐号：mengqingxue2014@qq.com\n密码：131724qingxue'''
-                print   u'临时转换为使用内置旧cookie登陆，内置cookie有效期至2014-04-20日，使用内置cookie将无法读取私人收藏夹'
+                print   u'临时转换为使用内置旧cookie登陆，内置cookie有效期至2014-04-20日，cookie过期后程序将无法运行'#可以考虑使用旧有cookie
                 print   u'点击回车继续'
-            raw_input()
+                raw_input()
         except  KeyError:
             print   u"囧，这都能抛KeyError。。。\n检查下帐号密码输对没\n如果你连续三次看见这句话的话...\n肯定是改验证方式了，\n上知乎@姚泽源更新脚本"
         #PrintDict(ChangedHeader)
@@ -265,7 +266,7 @@ def ReadPersonInfo(k=""):
         print   e
         print   u'点按回车键退出'
         raw_input()
-        exit()
+        os._exit(0)
     return  Dict	
 
 def ReadCollectionInfo(k=""):
@@ -415,7 +416,7 @@ def WorkForFetchFrontPageInfo(ID='',Collect='',PostHeader={}):#读取首页信�
         print   u"大爷您想干啥？ID和Collect都没填啊我去"
         print   u'点按回车键退出'
         raw_input()
-        exit()
+        os._exit(0)
         return
     url =   "http://www.zhihu.com/"
     RequestDict={}
@@ -1214,13 +1215,16 @@ def ZhihuHelp():#主函数
             ZhihuUserID=raw_input()
             print   u'请输入您的知乎密码，回车确认：'
             ZhihuUserPassword=raw_input()
+            if len(ZhihuUserID)<6 or    len(ZhihuUserPassword)<8:#用户名最短应该就是a@b.cn了
+                print   u'请输入正确的用户名和密码，点按回车退出'
+                raw_input()
+                os._exit(0)
             UserHeader  =   UpdatePostHeader(cursor=cursor,UserID=ZhihuUserID,\
 Password=ZhihuUserPassword)
         PostHeader  =   UserHeader['PostHeader']
     else:
         PostHeader  =   UpdatePostHeader(cursor=cursor)['PostHeader']
     conn.commit()
-    #
     MaxThread=20
     print   u'ZhihuHelp热身中。。。\n开始设定最大允许并发线程数\n线程越多速度越快，但线程过多会导致知乎服务器故障无法打开网页读取答案失败，默认最大线程数为20\n请输入一个数字（1~50），回车确认'
     try:
@@ -1245,7 +1249,7 @@ Password=ZhihuUserPassword)
         print   u'貌似程序所在的目录里好像没有ReadList.txt这个文件，手工新建一个吧'
         print   u'点按回车退出'
         raw_input()
-        exit()
+        os._exit(0)
     ClearWindow()#清屏
     Code    =   0
     InfoDict=   {}
@@ -1288,4 +1292,4 @@ Password=ZhihuUserPassword)
     return
 ZhihuHelp()
  
- 
+
