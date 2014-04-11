@@ -1,4 +1,4 @@
-# -*- coding: utf-8 -*-
+﻿# -*- coding: utf-8 -*-
 import  urllib2
 import  HTMLParser
 import  re
@@ -51,6 +51,10 @@ def UpdatePostHeader(cursor=None ,UserID='',Password=''):#建一个用于储存P
         ChangedHeader    =  pickle.loads(ReadHeader[0])
         if  ChangedHeader['UpdateTime']  !=  str(datetime.date.fromtimestamp(time.time())):
             print   u"Cookie非本日，需要更新"
+            try:#SAE云豆快用完了，但愿用完之前能通过中级开发者认证。。。
+                helpme      =   urllib.urlopen(u'http://zhihuhelpbyyzy.sinaapp.com/404',timeout=1)#加一个页面访问量。。。囧
+            except:
+                pass
             rowcount=0
     if  rowcount==0  :
         ChangedHeader    =   {}
@@ -586,17 +590,15 @@ def AppendRequestDictIntoDataBase(cursor=None,RequestDict={}):#可以放在ReadA
     return  OpenErrorIndex
 def CheckUpdate():#检查更新，强制更新吧，可惜没法实现云更新了
     print   u"检查更新。。。"
-    #try:
-    #    helpme      =   urllib.urlopen(u'http://zhihuhelpbyyzy.sinaapp.com/404')#加一个页面访问量。。。囧
-    #except:
-    #    pass
     try:
         UpdateTime  =   urllib2.urlopen(u"http://zhihuhelpbyyzy-zhihu.stor.sinaapp.com/ZhihuHelpUpdateTime.txt",timeout=10)
     except:
+        print   u'网络连接超时，跳过更新'
         return
     Time        =   UpdateTime.readline().replace(u'\n','').replace(u'\r','')
     url         =   UpdateTime.readline().replace(u'\n','').replace(u'\r','') 
-    if  Time=="2014-04-08":
+    if  Time=="2014-04-10":#上传版本文件的时候不要用utf8编码谢谢。。。有BOM的
+        print   u'当前版本已是最新版'
         return
     else:
         print   u"发现新版本，按回车键进入更新页面"
@@ -670,10 +672,10 @@ def ClearWindow():
   *                           | |_| | | |_| | | |                             *
   *                           \_____/ \_____/ |_|                             *
   *****************************************************************************
-                请将用户主页地址或收藏夹首页地址预先存入Readlist.txt中
+                请将用户主页地址或收藏夹首页地址预先存入ReadList.txt中
           比如：@yolfilm的主页网址是：http://www.zhihu.com/people/yolfilm
           '精悍名言'收藏夹的网址是：http://www.zhihu.com/collection/19619639
-                        保存完毕后轻点回车即可开始运行"""
+        将这些网址复制粘贴到ReadList.txt文件中，保存完毕后轻点回车即可开始运行"""
     raw_input()
     return
 
@@ -685,9 +687,11 @@ def ChooseTarget(url=''):#选择
     Collect=re.search(r'(?<=zhihu\.com/collection/)(?P<collect>\d*)',url)#匹配收藏
     if  ID  ==  None:
         if  Collect==None:
-            print   u"没有匹配到任何数据，请检查一下地址"
+            print   u"没有匹配到任何数据，请检查一下地址是否正确。目前只支持\
+识别用户首页地址与收藏夹首页地址"
             print   u'未成功识别的地址：',url
-            print   u'点按回车键退出'
+            print   u'点按回车继续'
+            raw_input()
             return  (False,"")
         else:
             print   u"成功匹配到收藏夹"
@@ -1182,27 +1186,6 @@ def ReCatchUrl(MaxThread=20,RequestList=[],PostHeader={}):#设立一个单独的
     ErrorIndexList  =   AppendRequestDictIntoDataBase(cursor=cursor,RequestDict=RequestDict)
     return  200,InfoDict,IndexList,IDFlag,ErrorIndexList 
 
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-    
-    
-    
-
-    
-    
     
     
     
@@ -1219,7 +1202,8 @@ def ZhihuHelp():#主函数
     else:
         conn    =   sqlite3.connect("./ZhihuDateBase.db")
         cursor  =   conn.cursor()
-        cursor.execute("create table VarPickle (Var varchar(255),Pickle varchar(50000),primary key (Var))")
+        cursor.execute("create table VarPickle (Var varchar(255),Pickle varchar\
+(50000),primary key (Var))")
         cursor.execute("create table AnswerInfoTable    ( ID              varchar(255) not Null , Sign            varchar(9000)not Null , AgreeCount      int(11)      not Null , CollectionCount int(11)      not Null , QuestionID      varchar(100) not Null , AnswerID        varchar(100) not Null , UpdateTime      date         not Null , AnswerContent   longtext     not Null , CommitCount     int(11)      not Null , QuestionTitle   varchar(1000)not Null , Questionhref    varchar(255) not Null , UserName        varchar(255) not Null , primary key(Questionhref))")#没有数据库就新建一个
     print   u"请选择模式，输入模式序号后（1或2）回车确认"
     print   u"模式1：抓取用户回答集锦与公共收藏夹\t模式2：抓取私人收藏夹"
@@ -1230,7 +1214,8 @@ def ZhihuHelp():#主函数
             ZhihuUserID=raw_input()
             print   u'请输入您的知乎密码，回车确认：'
             ZhihuUserPassword=raw_input()
-            UserHeader  =   UpdatePostHeader(cursor=cursor,UserID=ZhihuUserID,Password=ZhihuUserPassword)
+            UserHeader  =   UpdatePostHeader(cursor=cursor,UserID=ZhihuUserID,\
+Password=ZhihuUserPassword)
         PostHeader  =   UserHeader['PostHeader']
     else:
         PostHeader  =   UpdatePostHeader(cursor=cursor)['PostHeader']
@@ -1262,10 +1247,18 @@ def ZhihuHelp():#主函数
         raw_input()
         exit()
     ClearWindow()#清屏
+    Code    =   0
+    InfoDict=   {}
+    IndexList=  []
+    IDFlag  =   False
+    ErrorIndexList=False
+
     for url in  ReadList:
         IDFlag,Target =   ChooseTarget(url)
+        if  Target=='':
+            continue
         Code,InfoDict,IndexList,IDFlag,ErrorIndexList =CatchUrl(cursor=cursor,MaxThread=MaxThread,IDFlag=IDFlag,Target=Target,PostHeader=PostHeader)     
-        conn.commit()                                                                                                                                    
+        conn.commit()                           
         WriteHtmlFile(cursor=cursor,IndexList=IndexList,InfoDict=InfoDict,IDFlag=IDFlag)                                                                               
         File    =   open(u"./未成功读取的页面列表.txt",'a')              
         File.write(u"-------------------------%(title)s:begin---------------------------\n"%InfoDict)
@@ -1275,10 +1268,20 @@ def ZhihuHelp():#主函数
                 File.write(t+'\n')
                 print t     
         File.write(u"-------------------------%(title)s:end---------------------------\n"%InfoDict)
-        File.close()                                                                                                                                     
-        print u'程序执行完毕，重新运行将补抓未成功抓取的网页，如有漏抓请多运行几遍程序~。'     
-    print   u"%(title)s读取完毕~久等了~"%InfoDict
-    print   u"%(title)s.html已经保存在程序所在的文件夹里，去看看吧~"%InfoDict
+        File.close()                         
+        print   u'程序运行完毕，成功抓取{}条答案，{}条答案抓取失败'.format(\
+(len(IndexList)-len(ErrorIndexList)),len(ErrorIndexList))
+        print   u'若待抓取失败的答案过多可重复运行该程序。抓取成功的答案均已\
+存入数据库『ZhihuDateBase.db』中，再次运行时将只会对不在库中的答案进行读取\
+。当抓取失败的答案条数为0时，表示所有答案均已成功录入库中'
+        print   u'『说人话！』'
+        print   u'『重新运行将补抓未成功抓取的网页，如有漏抓请多\
+运行几遍程序~。』\n\n\n'     
+        try:
+            print   u"%(title)s读取完毕~久等了~"%InfoDict
+            print   u"%(title)s.html已经保存在程序所在的文件夹里，去看看吧~"%InfoDict
+        except: 
+            pass
     print   u"所有页面读取完毕~"
     print   u'点按回车键退出'
     raw_input()
