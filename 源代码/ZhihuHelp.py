@@ -950,7 +950,7 @@ def Login(cursor=None,UserID='mengqingxue2014@qq.com',UserPassword='131724qingxu
                         MaxTryTime  +=1
                 else    :
                     if  MaxTryTime>=3:
-                        print   '三次尝试失败，使用已有cookie进行登录'
+                        print   '三次尝试失败，转为使用已有cookie进行登录'
                         return  OldPostHeader(cursor=cursor)
                     print   u'未知错误，尝试重新登陆，请重新输入用户名与密码\nPS:知乎返回的错误信息:'
                     PrintDict(PostInfo['msg'])
@@ -1184,7 +1184,7 @@ def returnIndexList(cursor=None,Target='',Flag=0,RequestDict={}):
 def ZhihuHelp():
     CheckUpdate()
     conn,cursor =   returnConnCursor()
-    PostHeader  =   OldPostHeader(cursor)#Login(cursor)
+    PostHeader  =   Login(cursor=cursor)
     if  os.path.exists(u'./知乎答案集锦')==False:
         os.makedirs(u'./知乎答案集锦')
     try:
@@ -1233,5 +1233,5 @@ def ZhihuHelp():
         conn.commit()
         IndexList   =   returnIndexList(cursor=cursor,Target=Target,Flag=TargetFlag,RequestDict=RequestDict)
         WriteHtmlFile(cursor=cursor,IndexList=IndexList,InfoDict=InfoDict,TargetFlag=TargetFlag)
-    print   '所有链接抓取完毕，久等了~'
+    ErrorReturn(u'所有链接抓取完毕，久等了~')
 ZhihuHelp()
