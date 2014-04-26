@@ -168,12 +168,11 @@ def CheckUpdate():#检查更新，强制更新
         return
     Time        =   UpdateTime.readline().replace(u'\n','').replace(u'\r','')
     url         =   UpdateTime.readline().replace(u'\n','').replace(u'\r','') 
-    if  Time=="2014-03-31":
+    if  Time=="2014-04-26":
         return
     else:
         print   u"发现新版本，按回车键进入更新页面"
         print   u'新版本下载地址:'+url
-        print   u'Mac 和 Linux 用户请手工打网址进入。。。当然，根据原码内的提示自行调整CheckUpdae里的内容也行~'
         raw_input()
         import  webbrowser
         webbrowser.open_new_tab(url)
