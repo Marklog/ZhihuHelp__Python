@@ -1022,7 +1022,7 @@ def InputUserNameandPassword():
     while   LoopFlag:
         UserPassword  =   raw_input()
         try :
-            re.search(r'\w{8,}',UserPassword).group(0)
+            re.search(r'.{8,}',UserPassword).group(0)#密码中可以有字符
         except  AttributeError:
             print   u'话说，输入的密码不规范啊'
             print   u'密码规范：1.只能由数字和字母构成2.至少8位'
