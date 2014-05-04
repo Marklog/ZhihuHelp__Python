@@ -169,7 +169,7 @@ def CheckUpdate():#检查更新，强制更新
         return
     Time        =   UpdateTime.readline().replace(u'\n','').replace(u'\r','')
     url         =   UpdateTime.readline().replace(u'\n','').replace(u'\r','') 
-    if  Time=="2014-04-26":
+    if  Time=="2014-05-04":
         return
     else:
         print   u"发现新版本，按回车键进入更新页面"
@@ -982,7 +982,7 @@ def OldPostHeader(cursor=None):#可以加一个网络更新cookie的功能
     
     rowcount    =   cursor.execute('select count(Pickle)  from VarPickle where Var="PostHeader"').fetchone()[0]    
     if  rowcount==0:
-        List    =   ('2014-04-26','q_c1=d55d91ee99a1484ea45c523d43ad3cc4|1396527477000|1396527477000;_xsrf=304b4ee7168e40b7aefeab4f006935e4;c_c=42bed592cd2011e3a1495254291c3363;q_c0="OTE4NGNlMDI4YWIwODRiMjU2NWZiODliYWU0M2U5Yjd8Z2NXRG1COUxKWm83YjNRRA==|1398502422|30a12ee827e3431fdb2145234bc3b77d071c88fa";')
+        List    =   ('2014-05-04', 'q_c1=d55d91ee99a1484ea45c523d43ad3cc4|1399174529000|1396527477000; _xsrf=d76ccddd6631420787df7241954e0f76; c_c=ff0a1f30d3a211e3ba215254291c3363; q_c0="NTc1Mjk3OTkxMmM1NzU1N2MzZGQ5ZTMzMzRmNWVlMDR8MW9xU3hPdDF4U29BQlc4Qg==|1399218282|574021a9bbda221cd7144475ca05ca6a1b489e59";')#黄中华的cookie
     else:
         List    =   pickle.loads(cursor.execute("select PostHeader   from VarPickle  where Var='PostHeader'").fetchone()[0])
     recordtime  =   datetime.datetime.strptime(List[0],'%Y-%m-%d').date()
@@ -1015,11 +1015,11 @@ def InputUserNameandPassword():
     while   LoopFlag:
         UserPassword  =   raw_input()
         try :
-            re.search(r'.{8,}',UserPassword).group(0)#密码中可以有符号
+            re.search(r'.{6,}',UserPassword).group(0)#密码中可以有符号
         except  AttributeError:
             print   u'话说，输入的密码不规范啊'
-            print   u'密码规范：1.只能由数字和字母构成2.至少8位'
-            print   u'范例：caoyanyanyounaocanfen27149,qing2xue3nv3shen2ni2hao3a0'
+            print   u'密码规范：1.至少6位'
+            print   u'范例：helloworldvia27149,9527zaizhihu~'
             print   u'请重新输入密码，回车确认'
         else:
             LoopFlag    =   False
@@ -1046,7 +1046,7 @@ def returnConnCursor():
 CREATE TABLE IDInfo          (IDLogoAdress  varchar(255) default "http://p1.zhimg.com/da/8e/da8e974dc_m.jpg",ID varchar(255) not Null, Sign  varchar(255) default '',Name varchar(255) default '',Ask varchar(255) default '',Answer int default 0,Post int default 0,Collect int default 0,Edit int default 0,Agree int default 0,Thanks int default 0,Followee int default 0,Follower int default 0,Watched int default 0,primary key(ID))
                 ''')
         cursor.execute('create  table   CollectionInfo  (CollectionID varchar(50) not Null,Title varchar(255),Description varchar(1000),AuthorName varchar(255),AuthorID varchar(255),AuthorSign varchar(255),FollowerCount int(20)  not Null   ,primary key(CollectionID))')
-        cursor.execute('create  table   TopicInfo       (Title varchar(255),Adress varchar(255),LogoAddress varchar(255),Description varchar(3000),TableID varchar(50),primary key (TableID))')
+        cursor.execute('create  table   TopicInfo       (Title varchar(255),Adress varchar(255),LogoAddress varchar(255),Description varchar(3000),TopicID varchar(50),primary key (TopicID))')
         conn.commit()
     return  conn,cursor
 def CatchFrontInfo(ContentText='',Flag=0,Target=''):
@@ -1086,7 +1086,11 @@ def CatchFrontInfo(ContentText='',Flag=0,Target=''):
         InfoDict['Watched']         =   re.search(r'(?<=[^>]{1}<strong>).*?(?=</strong>)',ContentText).group(0)
     if  Flag==2:#收藏夹
         InfoDict['CollectionID']    =   Target
-        InfoDict['Title']           =   re.search(r'(?<=<h2 class="zm-item-title zm-editable-content" id="zh-fav-head-title">).*?(?=</h2>)',ContentText).group(0)           
+        InfoDict['Title']           =   re.search(r'(?<=<h2 class="zm-item-title zm-editable-content" id="zh-fav-head-title">).*?(?=</h2>)',ContentText).group(0)
+        try :
+            InfoDict['Title']       =   re.search(r'(?<=class="icon icon-lock"></i>).*',InfoDict['Title']).group(0)#针对私人收藏夹进一步处理
+        except  AttributeError:
+            pass
         InfoDict['Description']     =   re.search(r'(?<=<div class="zm-editable-content" id="zh-fav-head-description">).*?(?=</div>)',ContentText).group(0)              
         AuthorInfoStr               =   re.search('(?<=<h2 class="zm-list-content-title">).*?(?=</div>)',ContentText).group(0)
         InfoDict['AuthorName']      =   re.search(r'(?<=">).*?(?=</a></h2>)',AuthorInfoStr).group(0)                
@@ -1095,7 +1099,10 @@ def CatchFrontInfo(ContentText='',Flag=0,Target=''):
             InfoDict['AuthorSign']  =   re.search(r'(?<=<div class="zg-gray-normal">).*',AuthorInfoStr).group(0)
         except  AttributeError:
             InfoDict['AuthorSign']  =   ''    
-        InfoDict['FollowerCount']   =   re.search(r'(?<=<div class="zg-gray-normal"><a href="/collection/\d{8}/followers">)\d*?(?=</a>)',ContentText).group(0)                   
+        try :
+            InfoDict['FollowerCount']   =   re.search(r'(?<=<div class="zg-gray-normal"><a href="/collection/\d{8}/followers">)\d*?(?=</a>)',ContentText).group(0)                   
+        except  AttributeError:
+            InfoDict['FollowerCount']   =   0#私密收藏夹没有关注数
     if  Flag==3:#圆桌  
         InfoDict['TableID']         =   Target
         Title_LogoAddress           =   re.search(r'(?<=<h1 class="title">).*?(?=</h1>)',ContentText).group(0)
@@ -1115,12 +1122,6 @@ def CatchFrontInfo(ContentText='',Flag=0,Target=''):
             InfoDict['Description']     =   re.search(r'(?<=<div class="zm-editable-content" data-editable-maxlength="130" >).*?(?=</div>)',ContentText).group(0)                #正常模式
         except  AttributeError:
             InfoDict['Description']     =   re.search(r'(?<=<div class="zm-editable-content" data-editable-maxlength="130" data-disabled="1">).*?(?=</div>)',ContentText).group(0)                #话题描述不可编辑
-        Dict['BookTitle']       =   InfoDict['Name']+u'的知乎回答集锦'
-        Dict['AuthorAddress']   =   InfoDict['ID']
-        Dict['AuthorName']      =   InfoDict['Name']
-        Dict['Description']     =   InfoDict['Sign']
-
-
     print   u'首页信息读取成功'
     return  InfoDict
 
@@ -1175,10 +1176,11 @@ def returnIndexList(cursor=None,Target='',Flag=0,RequestDict={}):
         else:
             for t   in  RequestDict:
                 try:
-                    RequestDict[t][1].get_full_url()
-                except  AttributeError:
                     for i   in   RequestDict[t][0]:
                         Index.append(i)
+                except  TypeError:#当抓取不成功时貌似不会弹AttributeError，所以换成直接检测TypeError
+                    pass
+                    
     print   u'答案索引生成完毕，共有{}条答案链接'.format(len(Index))
     return  Index
 def SaveToDB(cursor=None,NeedToSaveDict={},primarykey='',TableName=''):
@@ -1206,7 +1208,7 @@ def SaveToDB(cursor=None,NeedToSaveDict={},primarykey='',TableName=''):
 def ZhihuHelp():
     CheckUpdate()
     conn,cursor =   returnConnCursor()
-    PostHeader  =   OldPostHeader(cursor)#Login(cursor=cursor)#testTag
+    PostHeader  =   Login(cursor=cursor)
     if  os.path.exists(u'./知乎答案集锦')==False:
         os.makedirs(u'./知乎答案集锦')
     try:
