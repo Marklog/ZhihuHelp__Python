@@ -10,7 +10,7 @@ import  HTMLParser#HTML解码&lt;
 import  json#在returnPostHeader中解析Post返回值
 import  os#打开更新页面
 
-import  urllib
+import  urllib#编码请求字串，用于处理验证码
 
 
 import  sys#修改默认编码
@@ -152,13 +152,14 @@ def SaveCollectionIndexIntoDB(RequestDict={},CollectionID=0,cursor=None):
             pass
     return
 def AppendDictIntoDataBase(cursor=None,Dict={}) :   #假定已有数据库
-    rowcount    =   cursor.execute('select  count(Questionhref)  from    AnswerInfoTable where Questionhref=?',(Dict['Questionhref'],)).fetchone()[0]
-    if  rowcount==0 :
-        cursor.execute('insert  into    AnswerInfoTable (ID,Sign,AgreeCount,CommitCount,QuestionID,AnswerID,UpdateTime,QuestionTitle,Questionhref,UserName) values (?,?,?,?,?,?,?,?,?,?)',(Dict["ID"],Dict["Sign"],Dict["AgreeCount"],Dict["CommitCount"],Dict["QuestionID"],Dict["AnswerID"],Dict["UpdateTime"],Dict["QuestionTitle"],Dict["Questionhref"],Dict["UserName"],))
-        cursor.execute('insert  into    AnswerContentTable (Questionhref,AnswerContent) values (?,?)',(Dict["Questionhref"],Dict["AnswerContent"]))
-    else    :
-        cursor.execute('update   AnswerInfoTable set ID=?,Sign=?,AgreeCount=?,CommitCount=?,QuestionID=?,AnswerID=?,UpdateTime=?,QuestionTitle=?,UserName=?  where Questionhref=?',(Dict["ID"],Dict["Sign"],Dict["AgreeCount"],Dict["CommitCount"],Dict["QuestionID"],Dict["AnswerID"],Dict["UpdateTime"],Dict["QuestionTitle"],Dict["UserName"],Dict["Questionhref"],))
-        cursor.execute('update  AnswerContentTable set AnswerContent=? where Questionhref=?',(Dict["AnswerContent"],Dict["Questionhref"],))
+    bufDict     =   Dict
+    bufAnswerContent    =   bufDict['AnswerContent']  
+    del bufDict['AnswerContent']
+    SaveToDB(cursor=cursor,NeedToSaveDict=bufDict,primarykey='Questionhref',TableName='AnswerInfoTable')
+    bufDict                     =   {}
+    bufDict['AnswerContent']    =   bufAnswerContent
+    bufDict['Questionhref']     =   Dict['Questionhref']
+    SaveToDB(cursor=cursor,NeedToSaveDict=bufDict,primarykey='Questionhref',TableName='AnswerContentTable')
     return 
 def CheckUpdate():#检查更新，强制更新
     print   u"检查更新。。。"
@@ -209,7 +210,7 @@ def ChooseTarget(url=''):#选择
     return  0,""
 
 def WriteHtmlFile(cursor=None,IndexList=[],InfoDict={},TargetFlag=0):#u'没有抓取过收藏夹名字，sigh'
-    TitleDict    =   returnHtml_FrontPage(Flag=TargetFlag,InfoDict=InfoDict)
+    TitleDict    =   returnHtml_FrontPage(cursor=cursor,Flag=TargetFlag,InfoDict=InfoDict)
     Dict    =   {   'ID':'',
                     'Sign':'',
                     'AgreeCount':'',
@@ -243,6 +244,11 @@ def WriteHtmlFile(cursor=None,IndexList=[],InfoDict={},TargetFlag=0):#u'没有�
         Dict['QuestionTitle']   =   SelectAnswerList[7]
         Dict['Questionhref']    =   SelectAnswerList[8]
         Dict['UserName']        =   SelectAnswerList[9]
+        Dict['UserIDLogoAdress']=   SelectAnswerList[10]
+        if  len(Dict['Sign'])==0:
+            SignStr =''
+        else:
+            SignStr =',<strong>%(Sign)s</strong>'%Dict
         if  len(SelectAnswerList)!=0:
             File.write(u"""
     <h2 class="zm-item-title">
@@ -251,8 +257,9 @@ def WriteHtmlFile(cursor=None,IndexList=[],InfoDict={},TargetFlag=0):#u'没有�
     </h2>
     <div    class="answer-body">
         <div    class="answer-content">
-            <a style="color:black;font:blod" href=http://www.zhihu.com/people/%(ID)s>%(UserName)s</a>,<strong>%(Sign)s</strong>
-            <br/>
+            <img align="right" src="%(UserIDLogoAdress)s" alt=""/><a style="color:black;font:blod" href=http://www.zhihu.com/people/%(ID)s>%(UserName)s</a>
+            """%Dict+SignStr+
+            """<br /><br />
             %(AnswerContent)s    
         </div>
         <div    class='zm-item-comment-el'>
@@ -270,10 +277,11 @@ def WriteHtmlFile(cursor=None,IndexList=[],InfoDict={},TargetFlag=0):#u'没有�
     File.close()
     print   u'%(title)s制作完毕'%TitleDict
     return
-def returnHtml_FrontPage(Flag=0,InfoDict={}):
+def returnHtml_FrontPage(cursor=None,Flag=0,InfoDict={}):#兼职把Info存到数据库里
     Dict={}
     string=''
     if  Flag==1:
+        SaveToDB(cursor=cursor,NeedToSaveDict=InfoDict,primarykey='ID',TableName='IDInfo')
         Dict['title']   =   InfoDict['Name']+'(%(ID)s)'%InfoDict+u'先生的知乎答案集锦'
         Dict['ID_ID']      =   InfoDict['ID']
         Dict['ID_Name']    =   InfoDict['Name']
@@ -295,11 +303,12 @@ def returnHtml_FrontPage(Flag=0,InfoDict={}):
             <p>知乎用户协议：<a href="http://www.zhihu.com/terms#sec-licence">http://www.zhihu.com/terms#sec-licence</a></p>
             """%Dict
     if  Flag==2:
+        SaveToDB(cursor=cursor,NeedToSaveDict=InfoDict,primarykey='CollectionID',TableName='CollectionInfo')
         Dict['title']       =   u'知乎收藏之'+InfoDict['Title']
         Dict['Description'] =   InfoDict['Description']
         Dict['AuthorID']    =   InfoDict['AuthorID']
         Dict['AuthorName']  =   InfoDict['AuthorName']
-        Dict['CollectionID']=   InfoDict['TargetID']
+        Dict['CollectionID']=   InfoDict['CollectionID']
         
 
         string    = """<center><h1>%(title)s</h1></center>
@@ -318,6 +327,7 @@ def returnHtml_FrontPage(Flag=0,InfoDict={}):
                 <p>收藏夹地址：<a href="http://www.zhihu.com/collection/%(CollectionID)s">http://www.zhihu.com/collection/%(CollectionID)s</a></p>
                 <p>知乎用户协议：<a href="http://www.zhihu.com/terms#sec-licence">http://www.zhihu.com/terms#sec-licence</a></p>"""%Dict
     if  Flag==4:#Topic
+        SaveToDB(cursor=cursor,NeedToSaveDict=InfoDict,primarykey='TopicID',TableName='TopicInfo')
         Dict['title']       =   u'知乎话题之'+InfoDict['Title']
         Dict['Description'] =   InfoDict['Description']
         Dict['Adress']      =   InfoDict['Adress']
@@ -690,19 +700,20 @@ a:active    {text-decoration:underline; color:#259 }
     return  Dict
 def returnReDict():#返回编译好的正则字典
     Dict    =   {}
-    Dict['_Collection_QusetionTitle']  =   re.compile(r'(?<=href="/question/\d{8}">).*?(?=</a></h2>)')
-    Dict['_QusetionTitle']  =   re.compile(r'(?<=href="/question/\d{8}/answer/\d{8}">).*?(?=</a></h2>)')
-    Dict['_AnswerContent']  =   re.compile(r'(?<=<textarea class="content hidden">).*(?=<span class="answer-date-link-wrap"><a class="answer-date-link meta-item" target="_blank" href="/question/\d{8}/answer/\d{8}">[^<]*</a></span></textarea>)')
-    Dict['_AgreeCount']  =   re.compile(r'(?<=data-votecount=")\d*(?=">)')
-    Dict['_QuestionID']  =   re.compile(r'(?<=<a class="answer-date-link meta-item" target="_blank" href="/question/)\d{8}(?=/answer/\d{8})')#数字位数可能有误#不过对11年的数据也有效，貌似多虑了——除非知乎问题能突破5千万条，否则没必要更新
-    Dict['_AnswerID']  =   re.compile(r'(?<=<a class="answer-date-link meta-item" target="_blank" href="/question/\d{8}/answer/)\d{8}(?=">)')
-    Dict['_Questionhref']  =   re.compile(r'(?<=<a class="answer-date-link meta-item" target="_blank" href=")[/question\danswer]{34}(?=">)')
-    Dict['_UpdateTime']  =   re.compile(r'(?<=<a class="answer-date-link meta-item" target="_blank" href="/question/\d{8}/answer/\d{8}">).*(?=</a></span></textarea>)')#分为13：25、昨天 00:26、2013-05-07三种情况，需进一步处理
-    Dict['_CommitCount']  =   re.compile(r'(?<=<i class="z-icon-comment"></i>).*?(?= )')#若转化为int失败则是添加评论#即为0条
-    Dict['_ID']  =   re.compile(r'(?<=<a data-tip="p\$t\$)[^"]*(?=" href="/people/)')
-    Dict['_UnSuccessName']  =   re.compile(r'(?<=<h3 class="zm-item-answer-author-wrap">).*(?=</h3></div>)')
-    Dict['_Sign']  =   re.compile(r'(?<=<strong title=").*(?=" class="zu-question-my-bio">)')
-    Dict['_NoRecord']  =   re.compile(r'<span class="copyright zu-autohide"><span class="zg-bull">&bull;</span> 禁止转载</span>')#怎么用？   
+    Dict['_Collection_QusetionTitle']   =   re.compile(r'(?<=href="/question/\d{8}">).*?(?=</a></h2>)')
+    Dict['_QusetionTitle']              =   re.compile(r'(?<=href="/question/\d{8}/answer/\d{8}">).*?(?=</a></h2>)')
+    Dict['_AnswerContent']              =   re.compile(r'(?<=<textarea class="content hidden">).*(?=<span class="answer-date-link-wrap"><a class="answer-date-link meta-item" target="_blank" href="/question/\d{8}/answer/\d{8}">[^<]*</a></span></textarea>)')
+    Dict['_AgreeCount']                 =   re.compile(r'(?<=data-votecount=")\d*(?=">)')
+    Dict['_QuestionID']                 =   re.compile(r'(?<=<a class="answer-date-link meta-item" target="_blank" href="/question/)\d{8}(?=/answer/\d{8})')#数字位数可能有误#不过对11年的数据也有效，貌似多虑了——除非知乎问题能突破5千万条，否则没必要更新
+    Dict['_AnswerID']                   =   re.compile(r'(?<=<a class="answer-date-link meta-item" target="_blank" href="/question/\d{8}/answer/)\d{8}(?=">)')
+    Dict['_Questionhref']               =   re.compile(r'(?<=<a class="answer-date-link meta-item" target="_blank" href=")[/question\danswer]{34}(?=">)')
+    Dict['_UpdateTime']                 =   re.compile(r'(?<=<a class="answer-date-link meta-item" target="_blank" href="/question/\d{8}/answer/\d{8}">).*(?=</a></span></textarea>)')#分为13：25、昨天 00:26、2013-05-07三种情况，需进一步处理
+    Dict['_CommitCount']                =   re.compile(r'(?<=<i class="z-icon-comment"></i>).*?(?= )')#若转化为int失败则是添加评论#即为0条
+    Dict['_ID']                         =   re.compile(r'(?<=<a data-tip="p\$t\$)[^"]*(?=" href="/people/)')
+    Dict['_UnSuccessName']              =   re.compile(r'(?<=<h3 class="zm-item-answer-author-wrap">).*(?=</h3></div>)')
+    Dict['_Sign']                       =   re.compile(r'(?<=<strong title=").*(?=" class="zu-question-my-bio">)')
+    Dict['_NoRecord']                   =   re.compile(r'<span class="copyright zu-autohide"><span class="zg-bull">&bull;</span> 禁止转载</span>')#怎么用？   
+    Dict['_UserIDLogoAdress']           =   re.compile(r'(?<=src=")http://p\d\.zhimg\.com[/\w]{7}[_\w]{11}\.jpg(?="class="zm-list-avatar)')
     return  Dict
 
 
@@ -711,26 +722,6 @@ def ErrorReturn(ErrorInfo=""):#返回错误信息并退出，错误信息要用u
     print   u"点按回车退出"
     input()                                                                       
     os._exit(0)                                                                     
-    
-def SaveAnswerDictIntoDB(AnswerDict={},cursor=None):
-    #1.将答案链接存入作者列表中
-    #2.检查答案链接里的更新日期是否与数据库中的日期相同，相异则更新数据库# 好麻烦。。。算了吧，不在乎这点CPU使用量
-    #3.没有办法记录答案在收藏夹里的位置，只能全部抓取，重新排序后输出
-    if  AnswerDict=={}  or  AnswerDict['UpdateTime']=='1970-01-01':
-        return
-    rowcount    =   cursor.execute('select count(ID)  from AnswerInfoTable where Questionhref=?',(AnswerDict['Questionhref'],)).fetchone()[0]
-    if  rowcount==0:
-        cursor.execute("insert  into AnswerInfoTable  (ID,Sign,AgreeCount,QuestionID,AnswerID,UpdateTime,CommitCount,QuestionTitle,Questionhref,UserName) values (?,?,?,?,?,?,?,?,?,?)",(Dict["ID"],Dict["Sign"],Dict["AgreeCount"],Dict["QuestionID"],Dict["AnswerID"],Dict["UpdateTime"],Dict["CommitCount"],Dict["QuestionTitle"],Dict["Questionhref"],Dict["UserName"]))
-    else:
-        cursor.execute("update AnswerInfoTable set ID=?,Sign=?,AgreeCount=?,QuestionID=?,AnswerID=?,UpdateTime=?,CommitCount=?,QuestionTitle=?,UserName=?   where   Questionhref=?",(Dict["ID"],Dict["Sign"],Dict["AgreeCount"],Dict["QuestionID"],Dict["AnswerID"],Dict["UpdateTime"],Dict["CommitCount"],Dict["QuestionTitle"],Dict["UserName"],Dict["Questionhref"]) )
-    
-    rowcount    =   cursor.execute('select count(Questionhref)  from AnswerContentTable where Questionhref=?',(AnswerDict['Questionhref'],)).fetchone()[0]
-    if  rowcount==0:
-        cursor.execute("insert  into AnswerContentTable  (AnswerContent,Questionhref) values (?,?)",(Dict['AnswerContent'],Dict["Questionhref"]))
-    else:
-        cursor.execute("update  AnswerContentTable  set    AnswerContent=? where   Questionhref    =   ?",(Dict['AnswerContent'],Dict["Questionhref"]))
-    return  
-    
         
 def ReadAnswer(ReDict,html_parser,LastDict,text="",Flag=1):
     Dict={}    
@@ -745,6 +736,7 @@ def ReadAnswer(ReDict,html_parser,LastDict,text="",Flag=1):
     Dict["Questionhref"]    =   ""#
     Dict["AnswerContent"]   =   ""#
     Dict["UserName"]        =   "ErrorName"#
+    Dict['UserIDLogoAdress']=   ''
     if  text=='':
         return  Dict
     try :#检测禁止转载
@@ -752,6 +744,9 @@ def ReadAnswer(ReDict,html_parser,LastDict,text="",Flag=1):
         return Dict
     except  :
         pass
+    
+
+
     try:
         Dict["AgreeCount"]      =   ReDict['_AgreeCount'].search(text).group(0)
     except  AttributeError:
@@ -778,7 +773,10 @@ def ReadAnswer(ReDict,html_parser,LastDict,text="",Flag=1):
     except  AttributeError:
         print   u"答案内容没有收集到"
         return  Dict#ErrorReturn(u" 知乎页面结构已变动，程序无法正常运行，快上知乎@姚泽源喊他更新脚本" )
-    
+    try:
+        Dict['UserIDLogoAdress']    =   ReDict['_UserIDLogoAdress'].search(text).group(0)
+    except  AttributeError:
+        Dict['UserIDLogoAdress']    =   ''#话题里没有头像
     update                  =   ReDict['_UpdateTime'].search(text).group(0)
     if  len(update)!=10 :        
         if  len(update)!=5  :
@@ -845,6 +843,8 @@ def WorkForFetchUrl(ErrorTextDict={},ReDict={},html_parser=None,RequestDict={},P
         k       =   k.split('<div class="zm-item"')#话题应使用新的ReadAnswer
     Dict    =   {}
     for t   in  range(1,len(k)):# 为0则何如
+        if  t==(len(k)-1):
+            k[t]    =   k[t].split('<div class="zm-invite-pager">')[0]
         Dict    =   ReadAnswer(ReDict,html_parser,Dict,k[t].replace('\r',"").replace('\n',"").encode("utf-8"),Flag)#使用的是单行模式，所以要去掉\r\n避免匹配失败
         if  Dict['UpdateTime']!='1970-01-01':
             AnswerDictList.append(Dict)
@@ -962,11 +962,10 @@ def Login(cursor=None,UserID='mengqingxue2014@qq.com',UserPassword='131724qingxu
         
         NewHeader   =   (str(datetime.date.fromtimestamp(time.time()).strftime('%Y-%m-%d')),header['Cookie'])#Time和datetime模块需要导入        
         
-        rowcount    =   cursor.execute('select count(Pickle)  from VarPickle where Var="PostHeader"').fetchone()[0]
-        if  rowcount==0:
-            cursor.execute("insert  into VarPickle  (Var,Pickle) values ('PostHeader',?) ",(pickle.dumps(NewHeader),))
-        else:
-            cursor.execute("update VarPickle set Pickle=? where Var='PostHeader'",(pickle.dumps(NewHeader),))
+        SaveDict    =   {}
+        SaveDict['Var']     =   'PostHeader'
+        SaveDict['Pickle']  =   pickle.dumps(NewHeader)
+        SaveToDB(cursor=cursor,NeedToSaveDict=SaveDict,primarykey='Var',TableName='VarPickle')
         return  header
         #提取qc_0,储存之
 def OldPostHeader(cursor=None):#可以加一个网络更新cookie的功能
@@ -979,17 +978,9 @@ def OldPostHeader(cursor=None):#可以加一个网络更新cookie的功能
 ,'User-Agent':'Mozilla/5.0 (Windows NT 6.3; WOW64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/34.0.1847.116 Safari/537.36'
 }
     
-    #print   u'请输入'#少年不要秀技术，这个你真没有。。。
-    #    List    =   pickle.loads(t[0])
-    #    CookieDict[str(No)] =   List[1]
-    #    print   str(No)+':\t\t'+List[0]
     rowcount    =   cursor.execute('select count(Pickle)  from VarPickle where Var="PostHeader"').fetchone()[0]    
     if  rowcount==0:
         List    =   ('2014-04-26','q_c1=d55d91ee99a1484ea45c523d43ad3cc4|1396527477000|1396527477000;_xsrf=304b4ee7168e40b7aefeab4f006935e4;c_c=42bed592cd2011e3a1495254291c3363;q_c0="OTE4NGNlMDI4YWIwODRiMjU2NWZiODliYWU0M2U5Yjd8Z2NXRG1COUxKWm83YjNRRA==|1398502422|30a12ee827e3431fdb2145234bc3b77d071c88fa";')
-
-
-
-
     else:
         List    =   pickle.loads(cursor.execute("select PostHeader   from VarPickle  where Var='PostHeader'").fetchone()[0])
     recordtime  =   datetime.datetime.strptime(List[0],'%Y-%m-%d').date()
@@ -1022,7 +1013,7 @@ def InputUserNameandPassword():
     while   LoopFlag:
         UserPassword  =   raw_input()
         try :
-            re.search(r'.{8,}',UserPassword).group(0)#密码中可以有字符
+            re.search(r'.{8,}',UserPassword).group(0)#密码中可以有符号
         except  AttributeError:
             print   u'话说，输入的密码不规范啊'
             print   u'密码规范：1.只能由数字和字母构成2.至少8位'
@@ -1046,12 +1037,17 @@ def returnConnCursor():
         conn.text_factory = str
         cursor  =   conn.cursor()
         cursor.execute("create table VarPickle (Var varchar(255),Pickle varchar(50000),primary key (Var))")
-        cursor.execute("create table AnswerInfoTable    ( ID              varchar(255) not Null , Sign            varchar(9000) not Null , AgreeCount      int(11)      not Null ,  QuestionID      varchar(20) not Null , AnswerID        varchar(20) not Null , UpdateTime      date         not Null , CommitCount     int(11)      not Null , QuestionTitle   varchar(1000)not Null , Questionhref    varchar(255) not Null , UserName        varchar(255) not Null , primary key(Questionhref))")#没有数据库就新建一个
-        cursor.execute("create  table AnswerContentTable    (AnswerContent   longtext     not Null ,  Questionhref    varchar(255) not Null , primary key(Questionhref))")#没有数据库就新建一个
-        cursor.execute("create  table   CollectionIndex (CollectionID   int not Null,Questionhref   varchar(255)    not Null, primary key(CollectionID,Questionhref))")#负责永久保存收藏夹链接，防止丢收藏
+        cursor.execute("create table AnswerInfoTable    ( ID              varchar(255) not Null , Sign            varchar(9000) not Null , AgreeCount      int(11)      not Null ,  QuestionID      varchar(20) not Null , AnswerID        varchar(20) not Null , UpdateTime      date         not Null , CommitCount     int(11)      not Null , QuestionTitle   varchar(1000) not Null , Questionhref    varchar(255) not Null , UserName        varchar(255) not Null ,UserIDLogoAdress varchar(255) not Null, primary key(Questionhref))")#没有数据库就新建一个
+        cursor.execute("create  table AnswerContentTable    (AnswerContent   longtext     not Null ,  Questionhref    varchar(255) not Null , primary key(Questionhref))")
+        cursor.execute("create  table   CollectionIndex (CollectionID   varchar(50) not Null,Questionhref   varchar(255)    not Null, primary key(CollectionID,Questionhref))")#负责永久保存收藏夹链接，防止丢收藏
+        cursor.execute('''
+CREATE TABLE IDInfo          (IDLogoAdress  varchar(255) default "http://p1.zhimg.com/da/8e/da8e974dc_m.jpg",ID varchar(255) not Null, Sign  varchar(255) default '',Name varchar(255) default '',Ask varchar(255) default '',Answer int default 0,Post int default 0,Collect int default 0,Edit int default 0,Agree int default 0,Thanks int default 0,Followee int default 0,Follower int default 0,Watched int default 0,primary key(ID))
+                ''')
+        cursor.execute('create  table   CollectionInfo  (CollectionID varchar(50) not Null,Title varchar(255),Description varchar(1000),AuthorName varchar(255),AuthorID varchar(255),AuthorSign varchar(255),FollowerCount int(20)  not Null   ,primary key(CollectionID))')
+        cursor.execute('create  table   TopicInfo       (Title varchar(255),Adress varchar(255),LogoAddress varchar(255),Description varchar(3000),TableID varchar(50),primary key (TableID))')
         conn.commit()
     return  conn,cursor
-def CatchFrontInfo(ContentText='',Flag=0):
+def CatchFrontInfo(ContentText='',Flag=0,Target=''):
     if  ContentText=='':
         return# 应该raise个错误出去
     print   u'开始读取答案首页信息。。。'
@@ -1061,7 +1057,7 @@ def CatchFrontInfo(ContentText='',Flag=0):
     if  Flag    ==1:#1,ID;2,Collect;3,RoundTable;4,Topic
         ID_Name_Sign                =   re.search(r'(?<=<div class="title-section ellipsis">).*?(?=<div class="body clearfix">)',ContentText).group(0)
 
-
+        InfoDict['IDLogoAdress']          =   re.search(r'''(?<=src=")http://p\d\.zhimg\.com[/\w]{7}[_\w]{11}\.jpg(?="class="zm-profile-header-img zg-avatar-big zm-avatar-editor-preview)''',ContentText).group(0)
         InfoDict['ID']              =   re.search(r'(?<=href="/people/)[^"]*',ID_Name_Sign).group(0)            
         try:
             InfoDict['Sign']            =   re.search(r'(?<=<span class="bio" title=").*?(?=">)',ID_Name_Sign).group(0)            
@@ -1087,6 +1083,7 @@ def CatchFrontInfo(ContentText='',Flag=0):
         
         InfoDict['Watched']         =   re.search(r'(?<=[^>]{1}<strong>).*?(?=</strong>)',ContentText).group(0)
     if  Flag==2:#收藏夹
+        InfoDict['CollectionID']    =   Target
         InfoDict['Title']           =   re.search(r'(?<=<h2 class="zm-item-title zm-editable-content" id="zh-fav-head-title">).*?(?=</h2>)',ContentText).group(0)           
         InfoDict['Description']     =   re.search(r'(?<=<div class="zm-editable-content" id="zh-fav-head-description">).*?(?=</div>)',ContentText).group(0)              
         AuthorInfoStr               =   re.search('(?<=<h2 class="zm-list-content-title">).*?(?=</div>)',ContentText).group(0)
@@ -1097,7 +1094,8 @@ def CatchFrontInfo(ContentText='',Flag=0):
         except  AttributeError:
             InfoDict['AuthorSign']  =   ''    
         InfoDict['FollowerCount']   =   re.search(r'(?<=<div class="zg-gray-normal"><a href="/collection/\d{8}/followers">)\d*?(?=</a>)',ContentText).group(0)                   
-    if  Flag==3:#圆桌               
+    if  Flag==3:#圆桌  
+        InfoDict['TableID']         =   Target
         Title_LogoAddress           =   re.search(r'(?<=<h1 class="title">).*?(?=</h1>)',ContentText).group(0)
 
         InfoDict['Title']           =   re.search(r'(?<=<strong>).*(?=</strong>)',Title_LogoAddress).group(0)
@@ -1105,6 +1103,7 @@ def CatchFrontInfo(ContentText='',Flag=0):
         InfoDict['LogoAddress']     =   re.search(r'(?<=<img src=").*(?=" alt=")',Title_LogoAddress).group(0)                 
         InfoDict['Description']     =   re.search(r'(?<=<div class="description">).*?(?=</div>)',ContentText).group(0)                 
     if  Flag==4:#Topic
+        InfoDict['TopicID']         =   Target
         InfoDict['Title']           =   re.search(r'(?<=<title>).*?(?=</title>)',ContentText).group(0)[:-12]           
         
         InfoDict['Adress']          =   re.search(r'(?<=http://www.zhihu.com).*?(?=">)',ContentText).group(0)#/topic/19793502
@@ -1148,8 +1147,7 @@ def CreateWorkListDict(PostHeader,TargetFlag,Target):#输入http头、目标代�
     if  k   ==  '':
         ErrorReturn(u'打开答案首页失败，请检查网络连接\n打开失败的网址为'+url)
     k   =   k.replace('\n','').replace('\r','')
-    InfoDict    =   CatchFrontInfo(k,TargetFlag)
-    InfoDict['TargetID']=Target#用于记录收藏夹ID、圆桌名、话题ID
+    InfoDict    =   CatchFrontInfo(k,TargetFlag,Target)
     MaxPage     =   FetchMaxAnswerPageNum(k)
     print   MaxPage
     RequestDict =   {}
@@ -1176,14 +1174,32 @@ def returnIndexList(cursor=None,Target='',Flag=0,RequestDict={}):
                         Index.append(i)
     print   u'答案索引生成完毕，共有{}条答案链接'.format(len(Index))
     return  Index
-            
-                                                                                                                              
+def SaveToDB(cursor=None,NeedToSaveDict={},primarykey='',TableName=''):
+    rowcount    =   cursor.execute('select count({}) from {} where {} = ?'.format(primarykey,TableName,primarykey),(NeedToSaveDict[primarykey],)).fetchone()[0]
+    SQL1    =   'insert into '+TableName+' ('
+    SQL2    =   ' ) values ( '
+    SQLTuple=   []
+    sql1    =   'update '+TableName+' set '
+    for t   in  NeedToSaveDict:
+        SQL1+=t+','
+        SQL2+='?,'
+        SQLTuple.append(NeedToSaveDict[t])
+        sql1+=t+'=?,'
+    if  rowcount==0:
+        #insert
+        cursor.execute(SQL1[:-1]+SQL2[:-1]+')',tuple(SQLTuple))
+    else:
+        #update
+        SQLTuple.append(NeedToSaveDict[primarykey])
+        cursor.execute(sql1[:-1]+' where '+primarykey+'= ?',tuple(SQLTuple))
+
+
 
 
 def ZhihuHelp():
     CheckUpdate()
     conn,cursor =   returnConnCursor()
-    PostHeader  =   Login(cursor=cursor)
+    PostHeader  =   OldPostHeader(cursor)#Login(cursor=cursor)#testTag
     if  os.path.exists(u'./知乎答案集锦')==False:
         os.makedirs(u'./知乎答案集锦')
     try:
@@ -1232,5 +1248,6 @@ def ZhihuHelp():
         conn.commit()
         IndexList   =   returnIndexList(cursor=cursor,Target=Target,Flag=TargetFlag,RequestDict=RequestDict)
         WriteHtmlFile(cursor=cursor,IndexList=IndexList,InfoDict=InfoDict,TargetFlag=TargetFlag)
+        conn.commit()
     ErrorReturn(u'所有链接抓取完毕，久等了~')
 ZhihuHelp()
