@@ -222,7 +222,9 @@ def WriteHtmlFile(cursor=None,IndexList=[],InfoDict={},TargetFlag=0):#u'没有�
                     'CommitCount':'',
                     'QuestionTitle':'',
                     'Questionhref':'',
-                    'UserName':''}
+                    'UserName':'',
+                    'UserIDLogoAdress':''
+                    }
     File    =   open(u"./知乎答案集锦/%(title)s.html"%TitleDict,"w")
     File.write(TitleDict['FrontPageString'])
     print   u"开始生成网页集锦"
@@ -1112,7 +1114,12 @@ def CatchFrontInfo(ContentText='',Flag=0,Target=''):
         try :
             InfoDict['Description']     =   re.search(r'(?<=<div class="zm-editable-content" data-editable-maxlength="130" >).*?(?=</div>)',ContentText).group(0)                #正常模式
         except  AttributeError:
-            InfoDict['Description']     =   re.search(r'(?<=<div class="zm-editable-content" data-editable-maxlength="130" data-disabled="1">).*?(?=</div>)',ContentText).group(0)                #话题描述不可编辑 
+            InfoDict['Description']     =   re.search(r'(?<=<div class="zm-editable-content" data-editable-maxlength="130" data-disabled="1">).*?(?=</div>)',ContentText).group(0)                #话题描述不可编辑
+        Dict['BookTitle']       =   InfoDict['Name']+u'的知乎回答集锦'
+        Dict['AuthorAddress']   =   InfoDict['ID']
+        Dict['AuthorName']      =   InfoDict['Name']
+        Dict['Description']     =   InfoDict['Sign']
+
 
     print   u'首页信息读取成功'
     return  InfoDict
@@ -1226,7 +1233,8 @@ def ZhihuHelp():
         raw_input()
     for TargetUrl in    ReadList:
         print   u'开始识别目标网址'
-        TargetFlag,Target   =   ChooseTarget(TargetUrl.replace('\n','').replace('\r',''))
+        TargetUrl           =   TargetUrl.replace('\n','').replace('\r','')
+        TargetFlag,Target   =   ChooseTarget(TargetUrl)
         if  TargetFlag==0:
             print   u'识别目标网址失败，原网址:',TargetUrl,u'识别结果：',Target
             print   u'点按回车继续'
@@ -1247,6 +1255,19 @@ def ZhihuHelp():
             SaveCollectionIndexIntoDB(RequestDict=RequestDict,CollectionID=Target,cursor=cursor)
         conn.commit()
         IndexList   =   returnIndexList(cursor=cursor,Target=Target,Flag=TargetFlag,RequestDict=RequestDict)
+        #将IndexList存在数据库中，方便制作电子书
+        SaveToDBDict={}
+        SaveToDBDict['Var']   =     TargetUrl
+        SaveToDBDict['Pickle']=     pickle.dumps(IndexList)
+        SaveToDB(cursor=cursor,NeedToSaveDict=SaveToDBDict,primarykey='Var',TableName='VarPickle')
+        conn.commit()
+        #直接储存InfoDict
+        SaveToDBDict={}
+        SaveToDBDict['Var']   =     TargetUrl+'InfoDict'
+        SaveToDBDict['Pickle']=     pickle.dumps(InfoDict)
+        SaveToDB(cursor=cursor,NeedToSaveDict=SaveToDBDict,primarykey='Var',TableName='VarPickle')
+        conn.commit()
+        
         WriteHtmlFile(cursor=cursor,IndexList=IndexList,InfoDict=InfoDict,TargetFlag=TargetFlag)
         conn.commit()
     ErrorReturn(u'所有链接抓取完毕，久等了~')
