@@ -127,10 +127,8 @@ def DownloadImg(imghref=''):#下载失败时应报错或重试
 def CreateOPF(OPFInfoDict={},Mainfest='',Spine=''):#生成文件函数均假定当前目录为电子书根目录
     f   =   open('./OEBPS/content.opf','w')
     XML =   u'''<?xml version='1.0' encoding='utf-8'?>
-               <package xmlns="http://www.idpf.org/2007/opf" 
-               xmlns:dc="http://purl.org/dc/elements/1.1/" 
-               unique-identifier="%(AuthorAddress)s" version="2.0">
-               <metadata>
+               <package unique-identifier="%(AuthorAddress)s" version="2.0">
+               <metadata xmlns="http://www.idpf.org/2007/opf" xmlns:dc="http://purl.org/dc/elements/1.1/"  >
                <dc:title>%(BookTitle)s</dc:title>
                <dc:identifier id="%(AuthorAddress)s">%(AuthorAddress)s</dc:identifier>
                <dc:language>zh-CN</dc:language>
@@ -142,7 +140,7 @@ def CreateOPF(OPFInfoDict={},Mainfest='',Spine=''):#生成文件函数均假定�
                <!-- Content Documents -->
                <manifest>
                <item id="main-css" href="stylesheet.css" media-type="text/css"/> <!--均与OPF处同一文件夹内，所以不用写绝对路径-->
-               <item id="ncx"   href="toc.ncx"      media-type="application/xhtml+xml"/>
+               <item id="ncx"   href="toc.ncx"      media-type="application/x-dtbncx+xml"/>
                <item id="cover" href="html/cover.html"   media-type="application/xhtml+xml"/>
                <item id="title" href="html/title.html"   media-type="application/xhtml+xml"/>'''%OPFInfoDict +   Mainfest+                '''
                <item id="cover-image" href="images/cover.jpg" media-type="image/jpg"/>
