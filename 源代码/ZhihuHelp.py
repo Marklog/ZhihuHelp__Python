@@ -891,7 +891,7 @@ def Login(cursor=None,UserID='mengqingxue2014@qq.com',UserPassword='131724qingxu
         return  OldPostHeader(cursor=cursor)
     try :
         xsrf    =   '_xsrf=' + re.search(r'(?<=name="_xsrf" value=")[^"]*(?="/>)',ZhihuFrontPage.read()).group(0)
-        print   xsrf
+        #print   xsrf
     except  AttributeError:
         ErrorReturn(u'xsrf读取失败，程序出现致命故障，无法继续运行。\n错误信息：知乎的登陆验证方式可能已更改，无法在返回的cookie中正则匹配到xsrf，请知乎@姚泽源更新脚本')
     except  KeyError:
