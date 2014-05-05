@@ -196,13 +196,13 @@ def ZipToEpub(EpubName='a.epub'):
             for f in os.listdir(p):
                 if  not os.path.isfile(os.path.join(p, f)):
                         for k in os.listdir(os.path.join(p, f)):
-                            #print   'k=',os.path.join(p,f,k)
+                            #print   u'正在压缩文件k=',os.path.join(p,f,k)
                             epub.write(os.path.join(p,f,k), compress_type=zipfile.ZIP_STORED)
                 else:
-                    #print   'f=',os.path.join(p, f)
+                    print   u'最后生成文件_f=',os.path.join(p, f)
                     epub.write(os.path.join(p,f), compress_type=zipfile.ZIP_STORED)
         else    :
-            #print   'p=',p
+            print   u'最后生成文件_p=',p
             epub.write(p,compress_type=zipfile.ZIP_STORED)
     epub.close()
 ##########################################################新开始
@@ -391,10 +391,16 @@ def ZhihuHelp_Epub():
                 AnswerDict[QuestionID]['AnswerList']    =   []
                 AnswerDict[QuestionID]['AnswerList'].append(t)
         SortList    =   []
+        DictNo      =   0#为了输出更好看一些
+        DictCountNo =   len(AnswerDict)
         for t   in  AnswerDict:
+            DictNo+=1
+            if  DictNo%10==0:
+                print   u'正在处理第{}个回答共{}个'.format(DictNo,DictCountNo)
             DealAnswerDict(cursor=cursor,ImgList=ImgList,AnswerDict=AnswerDict[t])
             SortList.append((t,AnswerDict[t]['AgreeCount']))
         #开始输出目录与文件
+        print   u'答案处理完成，开始输出文件'
         TitleHtml   =   open("./OEBPS/html/title.html",'w')
         TitleHtml.write(u'''<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
              <html xmlns="http://www.w3.org/1999/xhtml" xml:lang="zh-CN">
@@ -417,7 +423,12 @@ def ZhihuHelp_Epub():
             </navPoint>''' 
         Mainfest=''
         Spine=''
+        DictNo      =   0
+        DictCountNo =   len(SortList)
         for t   in sorted(SortList,key=lambda  SortList:SortList[1],reverse=True):
+            DictNo      +=   1
+            if  DictNo%10==0:
+                print   u'正在输出第{}个文件，共{}个'.format(DictNo,DictCountNo)
             No+=1
             TitleStr    =   AnswerDict[t[0]]['Title']
             Ncx     +=u'<navPoint id="chapter{No}" playOrder="{No}"> <navLabel> <text>{title}</text> </navLabel> <content src="html/chapter{No}.html"/> </navPoint> \n'.format(title=TitleStr,No=No)
@@ -474,6 +485,7 @@ def ZhihuHelp_Epub():
         '''%InfoDict
         f.write(coverHtmlStr)
         f.close()
+        print   u'答案生成完毕，输出待下载图片链接，若图片下载时间过长可自行用迅雷下载并将下载完成的图片放在文件夹：/电子书制作临时资源库/XXX_电子书制作临时文件夹/OEBPS/images内，程序检测到图片已存在即不会再去下载,减少程序运行时间(咱这毕竟不是迅雷。。。囧)'
         #输出链接，反正最多就三四万个。。。
         f   =   open(u"../%(BookTitle)s待下载图片链接.txt"%InfoDict,'w')
         for t   in  ImgList:
@@ -481,7 +493,7 @@ def ZhihuHelp_Epub():
         f.close()
         
         #复制CSS与cover两个文件到临时文件夹中
-        print os.path.abspath('../../'+os.curdir+'/电子书制作资源文件夹/cover.jpg')
+        #print os.path.abspath('../../'+os.curdir+'/电子书制作资源文件夹/cover.jpg')
         f   =   open(os.path.abspath('../../'+os.curdir+u'/电子书制作资源文件夹/cover.jpg'),'rb')#真凶残啊。。。
         k   =   open(u'OEBPS/images/cover.jpg','wb')
         k.write(f.read())

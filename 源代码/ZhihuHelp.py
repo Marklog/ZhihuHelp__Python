@@ -133,7 +133,12 @@ def ThreadWorker(cursor=None,ErrorTextDict={},MaxThread=200,RequestDict={},Flag=
         if  LoopFlag:
             print   u'第{}遍答案抓取执行完毕，尚存错误页面数{},3秒后进行下一遍抓取'.format(Times+1,ErrorCount)
             time.sleep(3)
+    DictNo      =   0#美化输出
+    DictCountNo =   len(AnswerDictList)
     for Dict    in  AnswerDictList:
+        DictNo  +=  1
+        if  DictNo%10==0:
+            print   u'正在将第{}个答案存入数据库中，共{}个'.format(DictNo,DictCountNo)
         AppendDictIntoDataBase(cursor,Dict)
     return
 def SaveCollectionIndexIntoDB(RequestDict={},CollectionID=0,cursor=None):
