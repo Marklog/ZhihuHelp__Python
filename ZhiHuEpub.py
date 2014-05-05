@@ -294,12 +294,15 @@ def DealAnswerDict(cursor=None,AnswerDict={},ImgList=[]):#必须是符合规定�
         AnswerDict[t]={}
         AnswerDict[t]['HtmlStr']     =   HtmlStr
         AnswerDict[t]['AgreeCount']  =   int(Dict['AgreeCount'])
-        if  len(AnswerDict['Title'])==0 and len(Dict['QuestionTitle'])!=0:
-            AnswerDict['Title']         =   Dict['QuestionTitle']
+        
+        
         if  AnswerDict.has_key('AgreeCount'):
             AnswerDict['AgreeCount']    +=  int(Dict['AgreeCount'])
+            if  len(AnswerDict['Title'])==0 and len(Dict['QuestionTitle'])!=0:
+                AnswerDict['Title']         =   Dict['QuestionTitle'] 
         else:
             AnswerDict['AgreeCount']    =   int(Dict['AgreeCount'])
+            AnswerDict['Title']         =   Dict['QuestionTitle']
             AnswerDict['HtmlStr']  =   u'''<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
     <html xmlns="http://www.w3.org/1999/xhtml" xml:lang="zh-CN">
     <head>
