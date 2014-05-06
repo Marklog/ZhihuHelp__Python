@@ -174,7 +174,7 @@ def CheckUpdate():#检查更新，强制更新
         return
     Time        =   UpdateTime.readline().replace(u'\n','').replace(u'\r','')
     url         =   UpdateTime.readline().replace(u'\n','').replace(u'\r','') 
-    if  Time=="2014-05-04":
+    if  Time=="2014-05-06":
         return
     else:
         print   u"发现新版本，按回车键进入更新页面"
