@@ -12,15 +12,16 @@ import  pickle
 import  threading#使用线程下载图片，直接默认20线程#知乎图片是用CDN分发的，不必担心
 import  time#睡眠
 import re
-def DownloadPicWithThread(ImgList=[]):
+def DownloadPicWithThread(ImgList=[]):#添加图片池功能#当图片下载完成时在ImgList中删除之
     Time=0
-    MaxPage     =   len(ImgList)
     MaxThread   =   50
     while   Time<10:
+        MaxPage     =   len(ImgList)
+        Buf_ImgList =   []
         Time+=1
         ThreadList  =   []
         for t   in  ImgList:#因为已下载过的文件不会重新下载，所以直接重复执行十遍，不必检测错误#待下载的文件可能会突破万这一量计，所以还是需要一些优化
-            ThreadList.append(threading.Thread(target=DownloadImg,args=(t,)))
+            ThreadList.append(threading.Thread(target=DownloadImg,args=(t,Buf_ImgList,)))
         for Page in  range(MaxPage):
             if  threading.activeCount()-1 <   MaxThread:#实际上是总线程数
                 ThreadList[Page].start()#有种走钢丝的感觉。。。
@@ -39,6 +40,7 @@ def DownloadPicWithThread(ImgList=[]):
             print   u"第({}/10)轮下载图片，目前还有{}条线程正在运行,等待所有线程执行完毕".format(Time,ThreadRunning)
             if  ThreadRunning>0:
                 time.sleep(1)
+        ImgList =   Buf_ImgList
 def returnCursor():
     if  os.path.isfile('./ZhihuDateBase.db'):
         conn    =   sqlite3.connect("./ZhihuDateBase.db")
@@ -107,22 +109,39 @@ def fixPic(t='',ImgList=[]):
         t   =   t.replace(k,'src="../images/'+k[-15:])
         ImgList.append(k[5:])
     return  t
-def DownloadImg(imghref=''):#下载失败时应报错或重试
+def DownloadImg(imghref='',Buf_ImgList=[]):#下载失败时应报错或重试
     try :
-        if  len(imghref)==41:
-            imgfilename =   './OEBPS/images/'+imghref[-15:]
-        else:
-            imgfilename =   './OEBPS/images/'+imghref[-38:]
-        if  not os.path.isfile(imgfilename):
+        CheckName   =   u'../知乎图片池/'
+        try :
+            MetaName    =     re.search(r'[^/]*\.jpg',imghref).group(0)
+        except  AttributeError:
+            print       u'程序出现错误，未能成功提取图片链接'
+            print       u'目标网址'+imghref
+            print       u'已陷入死循环，请关闭程序'
+            raise       IOError('over')
+            MetaName    =     ''
+        imgfilename =   './OEBPS/images/'+MetaName   
+        if  not os.path.isfile(CheckName+MetaName):
             img =   urllib2.urlopen(url=imghref,timeout=10)
             k   =   img.read()
             if  len(k)==0:
+                raise   IOError('hello world')
                 return 0
             imgfile     =   open(imgfilename,"wb")
+            imgpoolfile =   open(CheckName+MetaName,"wb")
             imgfile.write(k)
+            imgpoolfile.write(k)
             imgfile.close()
+            imgpoolfile.close()
+        else    :
+            if  not os.path.isfile(imgfilename):
+                imgfile     =   open(imgfilename,"wb")
+                imgpoolfile =   open(CheckName+MetaName,"rb")
+                imgfile.write(imgpoolfile.read())
+                imgfile.close()
+                imgpoolfile.close()
     except  :
-        pass
+        Buf_ImgList.append(imghref)
     return 0
 def CreateOPF(OPFInfoDict={},Mainfest='',Spine=''):#生成文件函数均假定当前目录为电子书根目录
     f   =   open('./OEBPS/content.opf','w')
@@ -367,6 +386,7 @@ def ZhihuHelp_Epub():
     cursor  =   returnCursor()
     FReadList   =   open('ReadList.txt','r')
     Mkdir(u"电子书制作临时资源库")
+    Mkdir(u'电子书制作临时资源库/知乎图片池')
     for url in  FReadList:
         ImgList     =   []#清空ImgList
         InfoDict    =   {}
