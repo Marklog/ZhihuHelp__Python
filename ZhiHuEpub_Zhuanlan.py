@@ -22,7 +22,7 @@ def DownloadPicWithThread(ImgList=[]):#添加图片池功能#当图片下载完�
         Time+=1
         ThreadList  =   []
         for t   in  ImgList:#因为已下载过的文件不会重新下载，所以直接重复执行十遍，不必检测错误#待下载的文件可能会突破万这一量计，所以还是需要一些优化
-            ThreadList.append(threading.Thread(target=DownloadImg,args=(t,Buf_ImgList,)))
+            ThreadList.append(threading.Thread(target=DownloadImg,args=(t,ImgList,)))
         for Page in  range(MaxPage):
             if  threading.activeCount()-1 <   MaxThread:#实际上是总线程数
                 ThreadList[Page].start()#有种走钢丝的感觉。。。
@@ -102,13 +102,14 @@ def closeimg(text='',ImgList=[]):
     for t   in  re.findall(r'<img.*?>',text):
         text    =   text.replace(t,fixPic(removeAttibute(t,['data-rawwidth','data-original']).replace("data-rawheight",'height')[:-1]+u'  alt="知乎图片"/>',ImgList))
     return text
-def fixPic(t='',ImgList=[]):
-    for k   in  re.findall(r'src="http://p\d\.zhimg\.com[/\w]{7}[\w]{32}_[\d\w\.]{5}',t)  :
-        t   =   t.replace(k,'src="../images/'+k[-38:])
-        ImgList.append(k[5:])
-    for k   in  re.findall('(?<=src=")http://p\d\.zhimg\.com[/\w]{7}[_\w]{11}\.jpg',t):
-        t   =   t.replace(k,'src="../images/'+k[-15:])
-        ImgList.append(k[5:])
+def PixName(t):
+    return  re.search(r'[^/"]*?.jpg',t).group(0)
+def fixPic(t='',ImgList=[]):#属于json下的特殊情况
+    
+    
+    for k   in  re.findall(r'(?<=src=")http://[/\w\.^"]*?zhimg.com[/\w^"]*?.jpg',t):
+        t   =   t.replace(k,'../images/'+PixName(k))
+        ImgList.append(k)
     return  t
 def DownloadImg(imghref='',Buf_ImgList=[]):#下载失败时应报错或重试
     try :
@@ -248,14 +249,12 @@ def DealAnswerDict(JsonDict=[],ImgList=[],JsonDictList=[]):#必须是符合规�
         Dict['AuthorName']   =   t['author']['name']
         Dict['AuthorIDLink'] =   t['author']['profileUrl']#全地址
         Dict['PublishedTime']=   t["publishedTime"]
-        Dict['Commit']       =    t["commentsCount"]
+        Dict['Commit']       =   t["commentsCount"]
         Dict['Agree']        =   t["likesCount"]
-        Dict['Content']      =   closeimg(text=t["content"].replace('<hr>','<hr />').replace('<br>','<br />'),ImgList=ImgList)#需要进一步处理#testTag
+        Dict['Content']      =   t["content"]
         Buf_AuthorID         =   t['author']['avatar']['id']
         Buf_AuthorTemplete   =   t['author']['avatar']['template']
         Dict['AuthorIDLogo'] =   Buf_AuthorTemplete.format(id=Buf_AuthorID,size='s')     
-        
-        
         
         HtmlStr =u"""<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
             <html xmlns="http://www.w3.org/1999/xhtml" xml:lang="zh-CN">
@@ -294,7 +293,7 @@ def DealAnswerDict(JsonDict=[],ImgList=[],JsonDictList=[]):#必须是符合规�
         </div>
         </body></html>
         """%Dict
-        Dict['HtmlStr'] =   HtmlStr
+        Dict['HtmlStr'] =   closeimg(text=HtmlStr.replace('<hr>','<hr />').replace('<br>','<br />'),ImgList=ImgList)#需要进一步处理#testTag
         JsonDictList.append(Dict)#按发布顺序排序
 
 def MakeInfoDict(ColumnInfoDict={}):
@@ -330,6 +329,7 @@ def ZhihuHelp_Epub():
     FReadList   =   open('ReadList.txt','r')
     Mkdir(u"电子书制作临时资源库")
     Mkdir(u'电子书制作临时资源库/知乎图片池')
+    Mkdir(u"知乎答案集锦")
     for url in  FReadList:
         ImgList     =   []#清空ImgList
         InfoDict    =   {}
@@ -501,4 +501,7 @@ def ZhihuHelp_Epub():
         os.chdir('..')
         os.chdir('..')#回到元目录
         print   u'%(BookTitle)s制作完成'%InfoDict
+    print   u'恭喜，所有电子束制作完成\n点按回车退出'
+    raw_input()
+    exit()
 ZhihuHelp_Epub()

@@ -21,7 +21,7 @@ def DownloadPicWithThread(ImgList=[]):#添加图片池功能#当图片下载完�
         Time+=1
         ThreadList  =   []
         for t   in  ImgList:#因为已下载过的文件不会重新下载，所以直接重复执行十遍，不必检测错误#待下载的文件可能会突破万这一量计，所以还是需要一些优化
-            ThreadList.append(threading.Thread(target=DownloadImg,args=(t,Buf_ImgList,)))
+            ThreadList.append(threading.Thread(target=DownloadImg,args=(t,ImgList,)))
         for Page in  range(MaxPage):
             if  threading.activeCount()-1 <   MaxThread:#实际上是总线程数
                 ThreadList[Page].start()#有种走钢丝的感觉。。。
@@ -101,19 +101,18 @@ def closeimg(text='',ImgList=[]):
     for t   in  re.findall(r'<img.*?>',text):
         text    =   text.replace(t,fixPic(removeAttibute(t,['data-rawwidth','data-original']).replace("data-rawheight",'height')[:-1]+u'  alt="知乎图片"/>',ImgList))
     return text
+def PixName(t):
+    return  re.search(r'[^/"]*?.jpg',t).group(0)
 def fixPic(t='',ImgList=[]):
-    for k   in  re.findall(r'src="http://p\d\.zhimg\.com[/\w]{7}[\w]{32}_[\d\w\.]{5}',t)  :
-        t   =   t.replace(k,'src="../images/'+k[-38:])
-        ImgList.append(k[5:])
-    for k   in  re.findall('(?<=src=")http://p\d\.zhimg\.com[/\w]{7}[_\w]{11}\.jpg',t):
-        t   =   t.replace(k,'src="../images/'+k[-15:])
-        ImgList.append(k[5:])
+    for k   in  re.findall(r'(?<=src=")http://[/\w\.^"]*?zhimg.com[/\w^"]*?.jpg',t):
+        t   =   t.replace(k,'src="../images/'+PixName(k))
+        ImgList.append(k)
     return  t
 def DownloadImg(imghref='',Buf_ImgList=[]):#下载失败时应报错或重试
     try :
         CheckName   =   u'../知乎图片池/'
         try :
-            MetaName    =     re.search(r'[^/]*\.jpg',imghref).group(0)
+            MetaName    =     PixName(imghref)
         except  AttributeError:
             print       u'程序出现错误，未能成功提取图片链接'
             print       u'目标网址'+imghref
@@ -387,6 +386,7 @@ def ZhihuHelp_Epub():
     FReadList   =   open('ReadList.txt','r')
     Mkdir(u"电子书制作临时资源库")
     Mkdir(u'电子书制作临时资源库/知乎图片池')
+    Mkdir(u"知乎答案集锦")
     for url in  FReadList:
         ImgList     =   []#清空ImgList
         InfoDict    =   {}
@@ -529,6 +529,7 @@ def ZhihuHelp_Epub():
         print   u'答案生成完毕，输出待下载图片链接，若图片下载时间过长可自行用迅雷下载并将下载完成的图片放在文件夹：/电子书制作临时资源库/XXX_电子书制作临时文件夹/OEBPS/images内，程序检测到图片已存在即不会再去下载,减少程序运行时间(咱这毕竟不是迅雷。。。囧)'
         #输出链接，反正最多就三四万个。。。
         f   =   open(u"../%(BookTitle)s待下载图片链接.txt"%InfoDict,'w')
+        print '#testTag'
         for t   in  ImgList:
             f.write(t+'\r\n')
         f.close()
