@@ -105,7 +105,7 @@ def PixName(t):
     return  re.search(r'[^/"]*?.jpg',t).group(0)
 def fixPic(t='',ImgList=[]):
     for k   in  re.findall(r'(?<=src=")http://[/\w\.^"]*?zhimg.com[/\w^"]*?.jpg',t):
-        t   =   t.replace(k,'src="../images/'+PixName(k))
+        t   =   t.replace(k,'../images/'+PixName(k))
         ImgList.append(k)
     return  t
 def DownloadImg(imghref='',Buf_ImgList=[]):#下载失败时应报错或重试
