@@ -835,10 +835,10 @@ def CheckUpdate():#检查更新，强制更新
         return
     Time        =   UpdateTime.readline().replace(u'\n','').replace(u'\r','')
     url         =   UpdateTime.readline().replace(u'\n','').replace(u'\r','') 
-    if  Time=="2014-05-06":
+    if  Time=="2014-05-08":
         return
     else:
-        print   u"发现新版本，按回车键进入更新页面"
+        print   u"发现新版本，更新日期{} ，按回车键进入更新页面".format(Time)
         print   u'新版本下载地址:'+url
         raw_input()
         import  webbrowser
