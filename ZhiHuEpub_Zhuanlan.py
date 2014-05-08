@@ -13,16 +13,15 @@ import  pickle
 import  threading#使用线程下载图片，直接默认20线程#知乎图片是用CDN分发的，不必担心
 import  time#睡眠
 import re
-def DownloadPicWithThread(ImgList=[]):#添加图片池功能#当图片下载完成时在ImgList中删除之
+def DownloadPicWithThread(ImgList=[],MaxThread=20):#添加图片池功能#当图片下载完成时在ImgList中删除之
     Time=0
-    MaxThread   =   50
     while   Time<10:
         MaxPage     =   len(ImgList)
         Buf_ImgList =   []
         Time+=1
         ThreadList  =   []
         for t   in  ImgList:#因为已下载过的文件不会重新下载，所以直接重复执行十遍，不必检测错误#待下载的文件可能会突破万这一量计，所以还是需要一些优化
-            ThreadList.append(threading.Thread(target=DownloadImg,args=(t,ImgList,)))
+            ThreadList.append(threading.Thread(target=DownloadImg,args=(t,Buf_ImgList,)))
         for Page in  range(MaxPage):
             if  threading.activeCount()-1 <   MaxThread:#实际上是总线程数
                 ThreadList[Page].start()#有种走钢丝的感觉。。。
@@ -211,7 +210,7 @@ def ZipToEpub(EpubName='a.epub'):
     DictNo  =   0
     for p in os.listdir('.'):
         print   'p=',p,'EpubName=',EpubName
-        if  p   ==  EpubName:
+        if  p   ==  EpubName    or  p   ==  'mimetype':
             print   'yuanwenjian'
             continue
         if  not os.path.isfile(p):
@@ -325,7 +324,7 @@ def ErrorReturn(ErrorInfo=""):#返回错误信息并退出，错误信息要用u
     print   u"点按回车继续"
     raw_input()                                                                       
 
-def ZhihuHelp_Epub():
+def ZhihuHelp_Epub(MaxThread=20):
     FReadList   =   open('ReadList.txt','r')
     Mkdir(u"电子书制作临时资源库")
     Mkdir(u'电子书制作临时资源库/知乎图片池')
@@ -496,7 +495,7 @@ def ZhihuHelp_Epub():
         k.write(f.read())
         k.close()
         f.close()
-        DownloadPicWithThread(ImgList)
+        DownloadPicWithThread(ImgList,MaxThread=MaxThread)
         ZipToEpub(InfoDict['BookTitle']+'.epub')
         os.chdir('..')
         os.chdir('..')#回到元目录
@@ -504,4 +503,4 @@ def ZhihuHelp_Epub():
     print   u'恭喜，所有电子束制作完成\n点按回车退出'
     raw_input()
     exit()
-ZhihuHelp_Epub()
+ZhihuHelp_Epub(MaxThread)

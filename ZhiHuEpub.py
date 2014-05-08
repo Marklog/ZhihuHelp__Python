@@ -12,16 +12,21 @@ import  pickle
 import  threading#使用线程下载图片，直接默认20线程#知乎图片是用CDN分发的，不必担心
 import  time#睡眠
 import re
-def DownloadPicWithThread(ImgList=[]):#添加图片池功能#当图片下载完成时在ImgList中删除之
+def CheckImgFileExist(CheckList=[],ErrorList=[]):
+    for url in  CheckList:
+        MetaName    =   u'../知乎图片池/'   +   PixName(url)
+        if  not os.path.isfile(MetaName):
+            ErrorList.append(url)
+
+def DownloadPicWithThread(ImgList=[],MaxThread=20):#添加图片池功能#当图片下载完成时在ImgList中删除之
     Time=0
-    MaxThread   =   50
     while   Time<10:
         MaxPage     =   len(ImgList)
         Buf_ImgList =   []
         Time+=1
         ThreadList  =   []
         for t   in  ImgList:#因为已下载过的文件不会重新下载，所以直接重复执行十遍，不必检测错误#待下载的文件可能会突破万这一量计，所以还是需要一些优化
-            ThreadList.append(threading.Thread(target=DownloadImg,args=(t,ImgList,)))
+            ThreadList.append(threading.Thread(target=DownloadImg,args=(t,)))
         for Page in  range(MaxPage):
             if  threading.activeCount()-1 <   MaxThread:#实际上是总线程数
                 ThreadList[Page].start()#有种走钢丝的感觉。。。
@@ -40,7 +45,14 @@ def DownloadPicWithThread(ImgList=[]):#添加图片池功能#当图片下载完�
             print   u"第({}/10)轮下载图片，目前还有{}条线程正在运行,等待所有线程执行完毕".format(Time,ThreadRunning)
             if  ThreadRunning>0:
                 time.sleep(1)
+        CheckImgFileExist(CheckList=ImgList,ErrorList=Buf_ImgList)
         ImgList =   Buf_ImgList
+        print   u'第{}轮下载执行完毕，剩余{}张图片待下载，若未下载图片过多可选择直接调用迅雷进行下载，下载列表在『程序所在文件夹\电子书制作临时资源库』中，将迅雷下载下来的图片放置于『程序所在文件夹\电子书制作临时资源库\知乎图片池』中即可,程序运行时会自动在图片池中进行搜索，对于已存在的图片将不会重复下载（PS:知乎使用了图片名称散列技术，不会有重名图片，直接将下载下来的图片放进图片池即可，不必改名）'.format(Time,len(ImgList))
+    
+
+
+
+        time.sleep(1)#休息一秒后继续
 def returnCursor():
     if  os.path.isfile('./ZhihuDateBase.db'):
         conn    =   sqlite3.connect("./ZhihuDateBase.db")
@@ -108,7 +120,7 @@ def fixPic(t='',ImgList=[]):
         t   =   t.replace(k,'../images/'+PixName(k))
         ImgList.append(k)
     return  t
-def DownloadImg(imghref='',Buf_ImgList=[]):#下载失败时应报错或重试
+def DownloadImg(imghref=''):#下载失败时应报错或重试
     try :
         CheckName   =   u'../知乎图片池/'
         try :
@@ -140,7 +152,9 @@ def DownloadImg(imghref='',Buf_ImgList=[]):#下载失败时应报错或重试
                 imgfile.close()
                 imgpoolfile.close()
     except  :
-        Buf_ImgList.append(imghref)
+        print   u'图片{}下载失败，失败次数过多时请考虑使用迅雷批量下载，下载连接在文件夹『电子书制作临时资源库』中，使用迅雷下载完成后请放入『电子书制作临时资源库\知乎图片池』内，不必改图片名'.format(MetaName)
+    else    :
+        print   u'成功下载图片{}'.format(MetaName)
     return 0
 def CreateOPF(OPFInfoDict={},Mainfest='',Spine=''):#生成文件函数均假定当前目录为电子书根目录
     f   =   open('./OEBPS/content.opf','w')
@@ -208,7 +222,7 @@ def ZipToEpub(EpubName='a.epub'):
     DictNo  =   0
     for p in os.listdir('.'):
         print   'p=',p,'EpubName=',EpubName
-        if  p   ==  EpubName:
+        if  p   ==  EpubName    or  p   ==  'mimetype':
             print   'yuanwenjian'
             continue
         if  not os.path.isfile(p):
@@ -381,7 +395,7 @@ def MakeInfoDict(InfoDict={},TargetFlag=0):
 
 
 
-def ZhihuHelp_Epub():
+def ZhihuHelp_Epub(MaxThread=20):
     cursor  =   returnCursor()
     FReadList   =   open('ReadList.txt','r')
     Mkdir(u"电子书制作临时资源库")
@@ -526,14 +540,15 @@ def ZhihuHelp_Epub():
         '''%InfoDict
         f.write(coverHtmlStr)
         f.close()
-        print   u'答案生成完毕，输出待下载图片链接，若图片下载时间过长可自行用迅雷下载并将下载完成的图片放在文件夹：/电子书制作临时资源库/XXX_电子书制作临时文件夹/OEBPS/images内，程序检测到图片已存在即不会再去下载,减少程序运行时间(咱这毕竟不是迅雷。。。囧)'
+        print   u'答案生成完毕，输出待下载图片链接，若图片下载时间过长可自行用迅雷下载并将下载完成的图片放在文件夹：/电子书制作临时资源库/XXX_电子书制作临时文件夹/OEBPS/images内，程序检测到图片已存在即不会再去下载,减少程序运行时间(咱这毕竟不是迅雷。。。)'
         #输出链接，反正最多就三四万个。。。
         f   =   open(u"../%(BookTitle)s待下载图片链接.txt"%InfoDict,'w')
-        print '#testTag'
+        ImgList =   list(set(ImgList))
         for t   in  ImgList:
             f.write(t+'\r\n')
         f.close()
         
+        print '开始下载图片'
         #复制CSS与cover两个文件到临时文件夹中
         #print os.path.abspath('../../'+os.curdir+'/电子书制作资源文件夹/cover.jpg')
         f   =   open(os.path.abspath('../../'+os.curdir+u'/电子书制作资源文件夹/cover.jpg'),'rb')#真凶残啊。。。
@@ -554,7 +569,7 @@ def ZhihuHelp_Epub():
         k.write(f.read())
         k.close()
         f.close()
-        DownloadPicWithThread(ImgList)
+        DownloadPicWithThread(ImgList,MaxThread=MaxThread)
         ZipToEpub(InfoDict['BookTitle']+'.epub')
         os.chdir('..')
         os.chdir('..')#回到元目录
