@@ -541,4 +541,4 @@ def ZhihuHelp_Epub(MaxThread=20):
     exit()
 print   u'请设置下载图片时的最大线程数\n线程越多速度越快，但线程过多会导致知乎服务器故障导致图片下载失败，默认最大线程数为20\n请输入一个数字（1~50），回车确认'
 MaxThread   =   setMaxThread()
-hihuHelp_Epub(MaxThread)
+ZhihuHelp_Epub(MaxThread)
