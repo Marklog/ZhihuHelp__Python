@@ -333,7 +333,31 @@ def OpenUrl(url=""):
 def ErrorReturn(ErrorInfo=""):#返回错误信息并退出，错误信息要用unicode编码
     print   ErrorInfo
     print   u"点按回车继续"
-    raw_input()                                                                       
+    raw_input()                                                                  
+def setMaxThread():
+    try:
+        MaxThread=int(raw_input())
+    except  ValueError as e  :
+        print   e
+        print   u'貌似输入的不是数...最大线程数重置为20，点击回车继续运行'
+        MaxThread=20
+        raw_input()
+    if  MaxThread>200   or  MaxThread<1:
+        if  MaxThread>200:
+            print   u"线程不要太大好伐\n你线程开的这么凶残你考虑过知乎服务器的感受嘛"
+        else:
+            print   u"不要输负数啊我去"
+        print u"最大线程数重置为20"
+        MaxThread=20
+        print u'猛击回车继续~'
+        raw_input()
+    return  MaxThread
+
+
+
+
+
+
 
 def ZhihuHelp_Epub(MaxThread=20):
     FReadList   =   open('ReadList.txt','r')
@@ -515,4 +539,6 @@ def ZhihuHelp_Epub(MaxThread=20):
     print   u'恭喜，所有电子书制作完成\n点按回车退出'
     raw_input()
     exit()
-ZhihuHelp_Epub(MaxThread)
+print   u'请设置下载图片时的最大线程数\n线程越多速度越快，但线程过多会导致知乎服务器故障导致图片下载失败，默认最大线程数为20\n请输入一个数字（1~50），回车确认'
+MaxThread   =   setMaxThread()
+hihuHelp_Epub(MaxThread)

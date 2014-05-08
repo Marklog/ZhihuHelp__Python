@@ -1868,6 +1868,24 @@ def SaveToDB(cursor=None,NeedToSaveDict={},primarykey='',TableName=''):
         SQLTuple.append(NeedToSaveDict[primarykey])
         cursor.execute(sql1[:-1]+' where '+primarykey+'= ?',tuple(SQLTuple))
 
+def setMaxThread():
+    try:
+        MaxThread=int(raw_input())
+    except  ValueError as e  :
+        print   e
+        print   u'貌似输入的不是数...最大线程数重置为20，点击回车继续运行'
+        MaxThread=20
+        raw_input()
+    if  MaxThread>200   or  MaxThread<1:
+        if  MaxThread>200:
+            print   u"线程不要太大好伐\n你线程开的这么凶残你考虑过知乎服务器的感受嘛"
+        else:
+            print   u"不要输负数啊我去"
+        print u"最大线程数重置为20"
+        MaxThread=20
+        print u'猛击回车继续~'
+        raw_input()
+    return  MaxThread
 
 
 
@@ -1884,21 +1902,7 @@ def ZhihuHelp():
         ErrorReturn(u'貌似程序所在的目录里好像没有ReadList.txt这个文件，手工新建一个吧')
     MaxThread=20
     print   u'ZhihuHelp热身中。。。\n开始设定最大允许并发线程数\n线程越多速度越快，但线程过多会导致知乎服务器故障无法打开网页读取答案失败，默认最大线程数为20\n请输入一个数字（1~50），回车确认'
-    try:
-        MaxThread=int(raw_input())
-    except  ValueError as e  :
-        print   e
-        print   u'貌似输入的不是数...最大线程数重置为20，点击回车继续运行'
-        MaxThread=20
-        raw_input()
-    if  MaxThread>200   or  MaxThread<1:
-        if  MaxThread>200:
-            print   u"线程不要太大好伐\n你线程开的这么凶残你考虑过知乎服务器的感受嘛"
-        else:
-            print   u"不要输负数啊我去"
-        print u"最大线程数重置为20"
-        print u'猛击回车继续~'
-        raw_input()
+    MaxThread   =   setMaxThread()
     for TargetUrl in    ReadList:
         print   u'开始识别目标网址'
         TargetUrl           =   TargetUrl.replace('\n','').replace('\r','')
@@ -1938,5 +1942,7 @@ def ZhihuHelp():
         
         WriteHtmlFile(cursor=cursor,IndexList=IndexList,InfoDict=InfoDict,TargetFlag=TargetFlag)
         conn.commit()
-    ErrorReturn(u'所有链接抓取完毕，久等了~')
+    print   u'所有链接抓取完毕，久等了~'
+    print   u'点按回车退出'
+    raw_input()
 ZhihuHelp()
